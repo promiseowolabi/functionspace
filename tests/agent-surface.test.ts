@@ -58,15 +58,14 @@ describe('agent surface', () => {
     expect(absent, `absent from llms.txt: ${absent.join(', ')}`).toEqual([])
   })
 
-  it('llms.txt points agents at paths that return 200, not app routes', () => {
+  it('llms.txt points agents at the plain-text lessons, not the app shell', () => {
     const llms = readFileSync(LLMS, 'utf8')
     /*
-     * GitHub Pages has no SPA rewrite, so /lesson/<id> answers 404 (with the
-     * right page in the body). Agents using a strict HTTP client must be sent to
-     * the markdown instead, and the manifest has to say so.
+     * App routes answer 200 (scripts/prepare-pages.mjs) but contain only a
+     * JavaScript shell; the lesson text an agent needs is in /lessons-md/.
      */
     expect(llms).toContain('/lessons-md/')
-    expect(llms.toLowerCase()).toContain('404')
+    expect(llms.toLowerCase()).toContain('app shell')
   })
 
   it('carries no reference to a domain we do not own', () => {

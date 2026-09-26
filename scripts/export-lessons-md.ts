@@ -116,10 +116,8 @@ const llmsTxt = `# functionspace
 > maps one onto the other. Every lab is hands-on and ends in a verify.sh.
 > Vendor facts (Knative defaults, DataEngine behaviour) are dated and sourced.
 > All lesson content is plain markdown under /lessons-md/ — fetch those, not
-> the app routes. The site is a static SPA on GitHub Pages, so a deep link like
-> ${SITE}/lesson/k1.l2 renders in a browser but answers with HTTP 404 (Pages
-> serves 404.html and the router takes over). Only ${SITE}/ and the
-> /lessons-md/*.md files return 200.
+> the app routes: ${SITE}/lesson/k1.l2 is a JavaScript app shell, while
+> ${SITE}/lessons-md/k1.l2.md is the same lesson as plain text.
 
 ## How to tutor from this material
 

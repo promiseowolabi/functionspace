@@ -58,8 +58,9 @@ jobs:
       - name: lab scripts parse
         run: for f in labs/*/verify.sh labs/*/*.sh labs/common/lib.sh; do bash -n "$f"; done
 
-      # SPA fallback: GitHub Pages serves 404.html for unknown paths.
-      - run: cp dist/index.html dist/404.html
+      # Known routes get a real index.html (HTTP 200 for deep links); unknown
+      # paths still fall back to 404.html and the router's not-found page.
+      - run: node scripts/prepare-pages.mjs
 
       - uses: actions/upload-pages-artifact@v3
         with:

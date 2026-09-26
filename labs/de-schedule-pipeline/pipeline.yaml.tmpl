@@ -1,0 +1,31 @@
+# Lab 08 pipeline. Render it with ./render.sh (fills ${…} from ../de.env).
+# The top-level name is required: --name on the command line does not
+# replace it when a config file is given.
+name: ${PREFIX}-tick-pipeline
+kubernetes_cluster_vrn: vast:dataengine:kubernetes-clusters:${K8S_CLUSTER}
+namespace: ${NAMESPACE}
+manifest:
+  function_deployments:
+    - function_vrn: vast:dataengine:functions:${PREFIX}-echo
+      name: ${PREFIX}-echo-1
+      revision: 1
+      config:
+        log_level: INFO
+      resources:
+        min_cpu: 100m
+        max_cpu: 500m
+        min_memory: 256Mi
+        max_memory: 512Mi
+        min_concurrency: 1
+        max_concurrency: 2
+        timeout: 60
+  triggers:
+    - name: ${PREFIX}-tick-1
+      vrn: vast:dataengine:triggers:${PREFIX}-tick
+  links:
+    - source: [${PREFIX}-tick-1]
+      destination: [${PREFIX}-echo-1]
+      topic: vast:dataengine:topics:${BROKER}/${TOPIC}
+      config:
+        events_order: unordered
+        retries: 3

@@ -1,0 +1,27 @@
+# A trigger whose subscriber always fails (HTTP 503), with a delivery policy:
+# 2 retries, exponential backoff starting at 1 s, then the dead-letter sink.
+# Apply with:  sed "s/PREFIX/$PREFIX/g" fail-trigger.yaml | kubectl apply -f -
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: PREFIX-orders-fail
+  namespace: default
+spec:
+  broker: PREFIX-broker
+  filter:
+    attributes:
+      type: dev.functionspace.order.created
+  subscriber:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: PREFIX-flaky
+  delivery:
+    retry: 2
+    backoffPolicy: exponential
+    backoffDelay: PT1S
+    deadLetterSink:
+      ref:
+        apiVersion: serving.knative.dev/v1
+        kind: Service
+        name: PREFIX-dls

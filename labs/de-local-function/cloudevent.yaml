@@ -1,0 +1,16 @@
+# A hand-written element event for `vastde functions invoke --event cloudevent.yaml`.
+#
+# The DataEngine runtime is strict about four fields (D1.L4 explains why):
+#   id          hex or a UUID — it seeds the trace id; "lab07-0001" is rejected
+#   source      vastdata.com:<trigger>.<trigger-id>
+#   subject     <broker>.<topic> — without it: 500 "malformed vast event: broker"
+#   elementpath <bucket>/<object key> — where event.bucket and event.object_key come from
+specversion: "1.0"
+type: "vastdata.com:Element.ObjectCreated"
+id: "7c1e2d3f-0000-4000-8000-000000000007"
+source: "vastdata.com:lab07-trigger.00000000-0000-4000-8000-000000000007"
+subject: "lab-broker.lab-topic"
+elementpath: "lab-bucket/alice/hello.csv"
+datacontenttype: "application/json"
+data:
+  note: "hand-written test event"

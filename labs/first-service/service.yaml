@@ -1,0 +1,17 @@
+# The declarative form of what `kn service create` does in step 2.
+# Replace PREFIX, or: sed "s/PREFIX/$PREFIX/g" service.yaml | kubectl apply -f -
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: PREFIX-hello
+  namespace: default
+spec:
+  template:
+    spec:
+      containers:
+        - image: ghcr.io/knative/helloworld-go:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: TARGET
+              value: World

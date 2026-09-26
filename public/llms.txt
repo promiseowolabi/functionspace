@@ -1,0 +1,112 @@
+# functionspace
+
+> How serverless functions work, on two platforms. The Knative half (F0, K1-K3)
+> takes Knative Serving, Eventing and Functions apart on a kind cluster the
+> reader creates; the DataEngine half (D1-D2) runs event-driven functions next
+> to the data on a VAST cluster with VAST DataEngine and the vastde CLI; X1
+> maps one onto the other. Every lab is hands-on and ends in a verify.sh.
+> Vendor facts (Knative defaults, DataEngine behaviour) are dated and sourced.
+> All lesson content is plain markdown under /lessons-md/ — fetch those, not
+> the app routes. The site is a static SPA on GitHub Pages, so a deep link like
+> https://promiseowolabi.github.io/functionspace/lesson/k1.l2 renders in a browser but answers with HTTP 404 (Pages
+> serves 404.html and the router takes over). Only https://promiseowolabi.github.io/functionspace/ and the
+> /lessons-md/*.md files return 200.
+
+## How to tutor from this material
+
+- The reader has built and run a container and has used kubectl at least a
+  little. Be Socratic; do not hand over full lab solutions.
+- Insist on mechanism. When the reader says "it scaled", ask which component
+  decided, from which metric, over which window.
+- Labs run on the reader's own infrastructure: a kind cluster for Knative, and
+  their own VAST cluster and tenant for DataEngine. Cluster-specific values
+  (VMS URL, tenant, registry, compute cluster, bucket) are placeholders the
+  reader fills in from their environment — never guess them.
+- On DataEngine internals: the course marks what is documented, what was
+  observed through the CLI, and what is inferred. Keep that distinction.
+
+## Curriculum
+
+### F0 — The Function Contract
+
+_"Serverless" hides three concrete mechanisms: an image that holds your code, a contract for how events reach it, and a scaler that decides how many copies exist. This track names all three, puts a number on the cold start, and gives you just enough Kubernetes to read everything that follows._
+
+- [F0.L1 What a Function Is](https://promiseowolabi.github.io/functionspace/lessons-md/f0.l1.md): "Serverless" is a billing model and a marketing word. Underneath, every platform — Lambda, Knative, VAST DataEngine — is the same three mechanisms, and every problem you will debug lives in exactly one of them.
+- [F0.L2 CloudEvents, the Envelope](https://promiseowolabi.github.io/functionspace/lessons-md/f0.l2.md): Four required attributes, two ways to put them on the wire, and one pair of them — source and id — that is the only honest deduplication key you will ever get.
+- [F0.L3 Cold Start Arithmetic](https://promiseowolabi.github.io/functionspace/lessons-md/f0.l3.md): A cold start is not one number. It is five terms added together, and the biggest one — pulling the image — is usually the one you chose when you picked a builder.
+- [F0.L4 Kubernetes for Functions](https://promiseowolabi.github.io/functionspace/lessons-md/f0.l4.md): You need five Kubernetes ideas to read everything that follows — and the most important one is not a resource at all. It is a loop that never stops comparing what you asked for with what exists.
+
+### K1 — Knative Serving
+
+_Knative Serving turns a container into something that scales with traffic, including down to zero. You will follow a request through the ingress, the activator and the queue-proxy into your container, watch the autoscaler react to load, and split traffic between revisions without a redeploy._
+
+- [K1.L1 Service, Configuration, Revision, Route](https://promiseowolabi.github.io/functionspace/lessons-md/k1.l1.md): One object in, four objects out. Knative splits "what to run" from "where traffic goes" — and that split is the entire reason a rollback costs nothing.
+- [K1.L2 The Request Path](https://promiseowolabi.github.io/functionspace/lessons-md/k1.l2.md): Your request passes through Envoy, maybe the activator, and always a sidecar before it reaches your code. Whether the activator is in the path is decided by one number most people have never heard of: 211.
+- [K1.L3 The Autoscaler](https://promiseowolabi.github.io/functionspace/lessons-md/k1.l3.md): You asked for 10 requests per pod and got pods sized for 7. Fifty requests in flight became exactly 8 pods in under ten seconds. Every one of those numbers is arithmetic you can do before you deploy.
+- [K1.L4 Scale to Zero](https://promiseowolabi.github.io/functionspace/lessons-md/k1.l4.md): The last pod disappeared 89 to 92 seconds after the last request, run after run. That is not a timeout anyone chose — it is two windows added together, and each one is a knob with a price.
+- [K1.L5 Traffic and Rollouts](https://promiseowolabi.github.io/functionspace/lessons-md/k1.l5.md): A rollout in Knative is an edit to a table of percentages. The table can follow "latest" automatically, pin named revisions, give each one its own URL, or walk from 0 to 100% over sixty seconds on its own.
+- [K1.L6 Tuning a Service](https://promiseowolabi.github.io/functionspace/lessons-md/k1.l6.md): Out of the box your container has no CPU or memory request at all, a 300-second timeout, and no concurrency limit. Those three defaults are fine for a demo and wrong for almost every production function.
+
+### K2 — Knative Eventing
+
+_Serving answers requests. Eventing decides where events go when nobody is waiting for a response. Sources, brokers, triggers, channels and dead-letter sinks — the plumbing that lets a producer stay ignorant of every consumer._
+
+- [K2.L1 Sources, Sinks, Addressables](https://promiseowolabi.github.io/functionspace/lessons-md/k2.l1.md): Knative Eventing has one idea underneath all its object types: anything with a URL in its status can receive events, and anything with a sink field can send them. Everything else is composition.
+- [K2.L2 Broker and Trigger](https://promiseowolabi.github.io/functionspace/lessons-md/k2.l2.md): A broker is not a process you run — every broker in the cluster shares one ingress and one filter deployment. A trigger is a filter plus a subscriber, and one event can match any number of them.
+- [K2.L3 Channels and Subscriptions](https://promiseowolabi.github.io/functionspace/lessons-md/k2.l3.md): Under every broker in lab 04 was a channel you never created and a subscription per trigger. The default channel keeps events in memory — so the durability of your whole event system is one ConfigMap line, and a graceful restart will hide that from you.
+- [K2.L4 Delivery and Dead Letters](https://promiseowolabi.github.io/functionspace/lessons-md/k2.l4.md): With the defaults on the reference cluster, a failing subscriber is retried 10 times over about 205 seconds — and then the event is simply dropped, because nobody configured a dead-letter sink.
+- [K2.L5 Kafka-Backed Eventing](https://promiseowolabi.github.io/functionspace/lessons-md/k2.l5.md): Swap the channel for a Kafka topic and the Broker API does not change at all — but now events survive a crash, can be replayed, and can be delivered in order. Ordering costs you something most people only notice in production.
+- [K2.L6 Replies, Sequences, Parallel](https://promiseowolabi.github.io/functionspace/lessons-md/k2.l6.md): A function that answers an event emits a new one. That is how you build pipelines without a workflow engine — and how, on the reference cluster, one order turned into 255 hops before the broker's TTL stopped it.
+
+### K3 — Knative Functions
+
+_Knative Functions is the developer layer on top of Serving: `func create`, a template, a builder, and a deploy that writes a Knative Service for you. This track opens up everything the tool does so none of it is magic._
+
+- [K3.L1 func create](https://promiseowolabi.github.io/functionspace/lessons-md/k3.l1.md): Seven languages, two templates each, and one decision that matters more than the language: does your function answer HTTP requests, or consume CloudEvents?
+- [K3.L2 Builders](https://promiseowolabi.github.io/functionspace/lessons-md/k3.l2.md): The same 50-line Python function, built three ways: 18 seconds or four minutes, a 50 MB image or a 1.4 GB one — and Python 3.14 or Python 3.11, depending only on a flag you may never have set.
+- [K3.L3 CloudEvent Functions](https://promiseowolabi.github.io/functionspace/lessons-md/k3.l3.md): Your handler's HTTP status is its vote on whether the platform should retry. Raise the wrong exception in func-python 0.8.1 and a bad event you meant to reject comes back as a 500 — and gets retried.
+- [K3.L4 From func to ksvc](https://promiseowolabi.github.io/functionspace/lessons-md/k3.l4.md): Someone raised max-scale on a function by hand to survive a traffic spike. The next routine func deploy, 2.4 seconds long, quietly put it back. func.yaml is the source of truth, whether or not your team agreed to that.
+
+### D1 — DataEngine Foundations
+
+_VAST DataEngine runs functions on the VAST cluster, next to the data the events come from. It has its own object model — functions, triggers, pipelines, topics — and its own CLI. This track makes you fluent in both, from a local build to a pipeline running on your cluster._
+
+- [D1.L1 Compute Next to Data](https://promiseowolabi.github.io/functionspace/lessons-md/d1.l1.md): On most platforms an object upload has to leave the storage system — as a notification, then as a download — before any function can touch it. DataEngine's premise is that the storage system is where the event starts and where the function runs.
+- [D1.L2 The Object Model](https://promiseowolabi.github.io/functionspace/lessons-md/d1.l2.md): You can create a function, publish it, attach a trigger that fires every minute — and nothing runs. In DataEngine exactly one object causes compute to exist, and it is the one people create last.
+- [D1.L3 The vastde CLI](https://promiseowolabi.github.io/functionspace/lessons-md/d1.l3.md): The CLI's own README tells you to pass --tenant and edit ~/.vastde/config.yaml. The v5.5 binary rejects the flag and ignores the file. Trust the binary, and learn the three commands that tell you what it is really doing.
+- [D1.L4 The Function Runtime](https://promiseowolabi.github.io/functionspace/lessons-md/d1.l4.md): Your DataEngine handler returned a dict and the caller got 204 No Content. The return value did not vanish — it went somewhere else, if anywhere was configured. Everything about the runtime makes sense once you see where.
+- [D1.L5 Triggers](https://promiseowolabi.github.io/functionspace/lessons-md/d1.l5.md): A DataEngine trigger does exactly one thing: turn something happening on the cluster into CloudEvents on a topic. Two kinds, four object events, and prefix and suffix filters that decide how much of your bucket wakes your function up.
+- [D1.L6 Pipelines](https://promiseowolabi.github.io/functionspace/lessons-md/d1.l6.md): A pipeline manifest is three lists — what to deploy, what triggers exist, and which events go where — plus the knobs that decide how many copies of your function run and how long each may take.
+
+### D2 — DataEngine in Depth
+
+_A pipeline that runs is not a pipeline you can operate. This track goes under the object model: how the event broker carries events, what an S3 element event actually contains, how revisions roll out, where the logs, metrics and traces are — and how to write a handler that survives being called twice._
+
+- [D2.L1 The Event Broker](https://promiseowolabi.github.io/functionspace/lessons-md/d2.l1.md): DataEngine's event broker speaks the Kafka API and lives on the VAST cluster as a view — the same kind of object as a bucket. Every trigger publishes into it, every pipeline link reads from it, and its partition key decides what stays in order.
+- [D2.L2 Element Triggers, End to End](https://promiseowolabi.github.io/functionspace/lessons-md/d2.l2.md): You subscribe to ObjectCreated, the CLI's test events say Element.ObjectCreated, and the cluster sends Element.ElementCreated. One upload, followed from the S3 PUT to your handler, shows every name and field that actually crosses the wire.
+- [D2.L3 Revisions and Rollouts](https://promiseowolabi.github.io/functionspace/lessons-md/d2.l3.md): Publishing revision 2 changed nothing. Updating the pipeline to revision 2 changed nothing either. Only a deploy did — and when it did, the pod name went from -00001 to -00002, exactly like a Knative revision.
+- [D2.L4 Observability](https://promiseowolabi.github.io/functionspace/lessons-md/d2.l4.md): vastde logs returned exactly 100 lines — the oldest 100 in the window — so the event you were looking for was not there. The scope the help text told you to filter on matched nothing. Telemetry is only evidence once you know how the tools lie.
+- [D2.L5 Failure, Retries, Idempotency](https://promiseowolabi.github.io/functionspace/lessons-md/d2.l5.md): A handler that raised on purpose ran four times in fourteen seconds — 2, 4 and 8 seconds apart — with the same event id every time. If that handler had written a row before it raised, you would now have four rows.
+
+### X1 — Two Platforms, One Model
+
+_Two platforms, one set of ideas. This track maps DataEngine onto Knative concept by concept (and says plainly where the mapping is inferred), sizes concurrency with arithmetic instead of guesswork, and ends on the patterns that decide an architecture before a platform is chosen._
+
+- [X1.L1 The Mapping](https://promiseowolabi.github.io/functionspace/lessons-md/x1.l1.md): The DataEngine runtime reads K_SINK, answers Knative queue-proxy's HTTP/2 probe, and the installer embedded in the public CLI ships the Knative Operator and grants DataEngine's controller the right to create Knative Services, Brokers, Triggers and SinkBindings. Nobody has to tell you what is underneath — the artefacts do.
+- [X1.L2 Sizing Concurrency](https://promiseowolabi.github.io/functionspace/lessons-md/x1.l2.md): Lab 02 predicted 481 requests per second from two numbers before fortio measured 480.85. The same one-line law sizes a DataEngine pipeline's max_concurrency, a Knative target, and the bill.
+- [X1.L3 Exactly-Once Is a Design](https://promiseowolabi.github.io/functionspace/lessons-md/x1.l3.md): Knative redelivered a failing event 3 times; DataEngine redelivered one 4 times. Neither platform promised otherwise. "Exactly once" is not a setting you find — it is a property you build into the handler, and it costs one stable key.
+- [X1.L4 Architecture Patterns](https://promiseowolabi.github.io/functionspace/lessons-md/x1.l4.md): Four patterns cover almost every event-driven data design you will be asked to review. Pick the pattern first; the platform choice usually falls out of where the events start and where the data lives.
+
+## Labs
+
+- [Lab 00 — A Knative Cluster You Own](https://promiseowolabi.github.io/functionspace/labs/kind-knative) (Knative on kind): kind, Knative Serving, Kourier and Eventing on your laptop in about three minutes — and a look at every controller that just started.
+- [Lab 01 — One Service, Two Revisions](https://promiseowolabi.github.io/functionspace/labs/first-service) (Knative on kind): Deploy a Knative Service, change one environment variable, and find the three objects Knative created for you — twice.
+- [Lab 02 — Load, Panic, Zero](https://promiseowolabi.github.io/functionspace/labs/autoscaling) (Knative on kind): Drive a Service with `hey`, watch the pod count follow the concurrency target, then time how long it takes to disappear.
+- [Lab 03 — Blue, Green, Eighty-Twenty](https://promiseowolabi.github.io/functionspace/labs/traffic-split) (Knative on kind): Tag two revisions, send 20% of traffic to the new one, reach each directly by tag, then roll back without a redeploy.
+- [Lab 04 — Events With Nobody Waiting](https://promiseowolabi.github.io/functionspace/labs/broker-trigger) (Knative on kind): A PingSource publishes to a broker; two triggers filter by type; one sink fails on purpose so you can watch the dead-letter sink catch it.
+- [Lab 05 — func, End to End](https://promiseowolabi.github.io/functionspace/labs/knative-functions) (Knative on kind): Scaffold a Python CloudEvents function, build it into the kind registry, deploy it, and invoke it — then read the Service func wrote.
+- [Lab 06 — Point vastde at Your Tenant](https://promiseowolabi.github.io/functionspace/labs/de-setup) (VAST DataEngine): Write the CLI config, prove the tenant login, and inventory the compute cluster, registry, topics and buckets your labs will use.
+- [Lab 07 — Build It, Run It Here](https://promiseowolabi.github.io/functionspace/labs/de-local-function) (VAST DataEngine): Scaffold a DataEngine function, build it with the builder image, run it in a local container and send it a CloudEvent.
+- [Lab 08 — Your First Pipeline](https://promiseowolabi.github.io/functionspace/labs/de-schedule-pipeline) (VAST DataEngine): Push the image, register the function, create a schedule trigger and a pipeline — then read your handler's log lines from the cluster.
+- [Lab 09 — An Upload Is an Event](https://promiseowolabi.github.io/functionspace/labs/de-element-trigger) (VAST DataEngine): Create an element trigger on a bucket, upload an object with the S3 API, and watch your function receive the object key.
+- [Lab 10 — Revision 2, With Evidence](https://promiseowolabi.github.io/functionspace/labs/de-revisions-observability) (VAST DataEngine): Ship a second revision, move the pipeline onto it, and prove it with logs, a metric and a trace.

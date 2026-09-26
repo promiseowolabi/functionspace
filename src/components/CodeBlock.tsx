@@ -35,15 +35,20 @@ const HASH_COMMENT = new Set(['bash', 'sh', 'yaml', 'python', 'toml', 'dockerfil
 /** Output, logs and prose-like blocks: shown verbatim, no highlighting. */
 const PLAIN = new Set(['text', 'txt', 'output', 'log'])
 
+/*
+ * Token regexes as literals, not strings: a string-built RegExp silently lost a
+ * level of backslash escaping once and crashed every page with a code block.
+ * Groups: 1 comment · 2 string · 3 number · 4 word.
+ */
+const SLASH_RE = /(\/\/.*$|#.*$|\/\*.*?\*\/)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)|(\b0x[0-9a-fA-F]+\b|\b\d[\d_]*(?:\.\d+)?\b)|([A-Za-z_][A-Za-z0-9_]*)/g
+const HASH_RE = /((?:^|(?<=\s))#.*$)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)|(\b0x[0-9a-fA-F]+\b|\b\d[\d_]*(?:\.\d+)?\b)|([A-Za-z_][A-Za-z0-9_]*)/g
+
 function tokenizeLine(line: string, lang: string): ReactNode[] {
   if (PLAIN.has(lang)) return [<span key={0} className="text-text-2">{line}</span>]
   const kws = KEYWORDS[lang] ?? (HASH_COMMENT.has(lang) ? [] : (KEYWORDS.c ?? []))
   const kwSet = new Set(kws)
-  const comment = HASH_COMMENT.has(lang) ? String.raw`(?:^|(?<=\s))#.*$` : String.raw`\/\/.*$|#.*$|\/\*.*?\*\/`
-  const re = new RegExp(
-    `(${comment})|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\`(?:[^\`\\]|\\.)*\`)|(\\b0x[0-9a-fA-F]+\\b|\\b\\d[\\d_]*(?:\\.\\d+)?\\b)|([A-Za-z_][A-Za-z0-9_]*)`,
-    'g',
-  )
+  const re = HASH_COMMENT.has(lang) ? HASH_RE : SLASH_RE
+  re.lastIndex = 0
   const out: ReactNode[] = []
   let last = 0
   let m: RegExpExecArray | null

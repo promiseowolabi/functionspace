@@ -62,6 +62,11 @@ jobs:
       # paths still fall back to 404.html and the router's not-found page.
       - run: node scripts/prepare-pages.mjs
 
+      # Render real pages in headless Chrome: unit tests never execute the
+      # browser bundle, and a runtime-only regex bug once blanked every lesson.
+      - name: browser smoke test
+        run: CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) ./scripts/smoke.sh
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

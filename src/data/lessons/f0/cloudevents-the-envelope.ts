@@ -155,15 +155,15 @@ Content-Type: application/cloudevents+json
           explanation: 'Routing reads the envelope, not the body, so routing information belongs in attributes: a type such as ...order.created.priority or an extension like priority=high. Filtering inside the function works but pays a delivery (and possibly a cold start) for every event you throw away — a cost, not just a style issue.',
         },
         {
-          q: 'Your handler stores results keyed by the event id. Two different producers both emit events with id "1". What happens, and what should the key be?',
+          q: 'A handler saves each result under a key made from the event\'s id attribute alone. Producer A (source /orders) and producer B (source /refunds) each send an event with id "1". What happens with this handler, and how should it be fixed?',
           options: [
-            'Nothing — ids are globally unique by spec',
-            'One result overwrites the other; key by source + id',
-            'The broker rejects the second event as a duplicate',
-            'Key by time, which is always unique',
+            'Nothing goes wrong — the spec makes id globally unique, so both results are stored',
+            'Both events map to the key "1", so B\'s result overwrites A\'s; fix it by keying on source + id, which differs for the two events',
+            'The broker drops B\'s event as a duplicate of A\'s, so only one result exists',
+            'Nothing goes wrong as long as the handler adds the event time to the key',
           ],
           correct: [1],
-          explanation: 'id is only unique within a source; the spec makes source + id the identity. Timestamps are not unique and are optional. No broker in this course deduplicates for you.',
+          explanation: 'The spec only requires id to be unique within a source; source + id is the event\'s identity. /orders + 1 and /refunds + 1 are two different events — but a key built from id alone cannot tell them apart, so the second write replaces the first. Keying on source + id keeps both. time is optional and not unique, and no broker in this course deduplicates events for you.',
         },
         {
           q: 'A partner integration sends Content-Type: application/cloudevents+json and your hand-written HTTP handler reads the ce-type header — which is missing. What is going on?',

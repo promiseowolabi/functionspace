@@ -26,5 +26,6 @@ check "lesson/k1.l3/" "stable window"
 check "lesson/x1.l1/" "Knative Operator"
 check "labs/" "Labs"
 check "labs/de-element-trigger/" "Watch it arrive"
+check "labs/kind-knative/" "cd functionspace-labs/kind-knative"
 check "capstone/" "Write the core once"
 exit $fail

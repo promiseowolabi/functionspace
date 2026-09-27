@@ -140,8 +140,21 @@ export default function LabPage() {
         </div>
       </motion.div>
 
+      <div className="mt-8 rounded-lg border border-line bg-surface-1 p-5">
+        <p className="font-mono text-label uppercase text-text-3">get the lab files</p>
+        <p className="mt-2 text-body-sm text-text-2">
+          Download the zip above, then unpack it and work from the lab&apos;s own folder — every command
+          in this guide (<code>./verify.sh</code> and friends) is run from there. Unzipping several labs
+          into the same place is fine: they share <code>common/</code>
+          {lab.platform === 'vast' ? <> and your <code>de.env</code></> : null}.
+        </p>
+        <pre className="mt-3 overflow-x-auto rounded-md border border-line bg-surface-2 px-4 py-3 font-mono text-[13px] text-text-1">
+          {`unzip ${lab.id}.zip\ncd functionspace-labs/${lab.id}\nls`}
+        </pre>
+      </div>
+
       {g && (
-        <div className="mt-8 rounded-lg border border-line bg-surface-1 p-5">
+        <div className="mt-4 rounded-lg border border-line bg-surface-1 p-5">
           <p className="font-mono text-label uppercase text-text-3">you need</p>
           <ul className="mt-2 flex flex-wrap gap-2">
             {g.requires.map((r) => (

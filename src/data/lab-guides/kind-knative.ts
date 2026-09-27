@@ -92,7 +92,7 @@ kn quickstart kind --registry`,
       type: 'prose',
       md: `## 3. Take the tour
 
-Run \`./tour.sh\` from the lab folder. It changes nothing; it lists what was installed. Look for these, because every one of them comes back in K1 and K2:
+Run \`./tour.sh\` from the lab folder — \`functionspace-labs/kind-knative/\` after you unzip \`kind-knative.zip\` (see *get the lab files* above). It changes nothing; it lists what was installed. Look for these, because every one of them comes back in K1 and K2:
 
 - In \`knative-serving\`: **controller** (reconciles Services, Configurations, Revisions, Routes), **activator** (holds requests for revisions that have no pods), **autoscaler** (decides how many pods a revision needs), **webhook** (validates and defaults your YAML), **net-kourier-controller** (translates Knative routes into Envoy config).
 - In \`kourier-system\`: **3scale-kourier-gateway** — the Envoy that actually receives your HTTP requests.

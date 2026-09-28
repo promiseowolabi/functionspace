@@ -78,13 +78,20 @@ kubectl get configuration $PREFIX-hello -o jsonpath='{.metadata.ownerReferences[
       type: 'prose',
       md: `## 3. Look inside the pod
 
-A Revision's pod has **two** containers, and only one of them is yours:`,
+A Revision's pod has **two** containers, and only one of them is yours. The pod only exists while the revision has traffic — about 90 seconds after the last request it scales to zero (K1.L4) — so send a request first:`,
     },
     {
       type: 'code',
       lang: 'bash',
-      code: `kubectl get pod -l serving.knative.dev/revision=$PREFIX-hello-00001 \\
+      code: `curl -s http://$PREFIX-hello.default.127.0.0.1.sslip.io     # wake it up
+kubectl get pod -l serving.knative.dev/revision=$PREFIX-hello-00001 \\
   -o jsonpath='{range .items[0].spec.containers[*]}{.name}{"  ports="}{.ports[*].containerPort}{"\\n"}{end}'`,
+    },
+    {
+      type: 'callout',
+      variant: 'segfault',
+      title: 'array index out of bounds: index 0, length 0',
+      md: `The selector matched **no pods**. Either the revision had already scaled to zero (run the \`curl\` again, then the \`kubectl\` command within a minute), or \`$PREFIX\` is not set in this shell (\`echo $PREFIX\`). If you have already done step 4, traffic is on revision \`00002\` and \`00001\` stays at zero — use \`$PREFIX-hello-00002\`.`,
     },
     {
       type: 'code',

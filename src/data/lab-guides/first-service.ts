@@ -138,19 +138,64 @@ alice-hello-00001   alice-hello                    1            5s    4 OK / 4  
     },
     {
       type: 'prose',
-      md: `## 5. Why the old revision cannot change
+      md: `## 5. What a Revision actually pins
 
-Look at the image the Revision actually runs:`,
+You now have two revisions. Compare them on the two things a Revision records — the **exact image** it runs and the **configuration** around it:`,
     },
     {
       type: 'code',
       lang: 'bash',
-      code: `kubectl get revision $PREFIX-hello-00002 -o jsonpath='{.status.containerStatuses[0].imageDigest}{"\\n"}'
-# ghcr.io/knative/helloworld-go@sha256:a97656c5…`,
+      code: `for r in 00001 00002; do
+  echo "== $PREFIX-hello-$r"
+  kubectl get revision $PREFIX-hello-$r -o jsonpath='  image: {.status.containerStatuses[0].imageDigest}{"\\n"}  env:   {.spec.containers[0].env}{"\\n"}'
+done`,
+    },
+    {
+      type: 'code',
+      filename: 'output',
+      lang: 'text',
+      code: `== alice-hello-00001
+  image: ghcr.io/knative/helloworld-go@sha256:a97656c57f547d668318eb45c4c44c4cb0667892c055b40355b37859918c5c18
+  env:   [{"name":"TARGET","value":"World"}]
+== alice-hello-00002
+  image: ghcr.io/knative/helloworld-go@sha256:a97656c57f547d668318eb45c4c44c4cb0667892c055b40355b37859918c5c18
+  env:   [{"name":"TARGET","value":"alice"}]`,
     },
     {
       type: 'prose',
-      md: `You asked for \`:latest\`. Serving resolved that tag to a **digest** when it created the Revision and pinned it. If someone pushes a new \`:latest\` tomorrow, revision 00002 keeps running exactly the bytes it ran today. That is what makes a Revision an immutable snapshot of code *and* configuration — and it is why rolling back (lab 03) is just moving traffic, not rebuilding anything.`,
+      md: `**The digests are identical, and that is correct.** You never changed the code — step 4 only changed an environment variable. So both revisions run exactly the same bytes, and they differ only in configuration. A new revision is stamped whenever *anything* in the template changes — image, env, resources, annotations — not only when the code does.
+
+### Why a digest, when you asked for a tag
+
+Look at what you wrote versus what the Revision recorded:`,
+    },
+    {
+      type: 'code',
+      lang: 'bash',
+      code: `kubectl get ksvc $PREFIX-hello -o jsonpath='{.spec.template.spec.containers[0].image}{"\\n"}'
+# ghcr.io/knative/helloworld-go:latest          ← what you asked for: a tag, which can move
+kubectl get revision $PREFIX-hello-00002 -o jsonpath='{.status.containerStatuses[0].imageDigest}{"\\n"}'
+# ghcr.io/knative/helloworld-go@sha256:a97656c5…   ← what the Revision runs: a digest, which cannot`,
+    },
+    {
+      type: 'prose',
+      md: `A tag like \`:latest\` is a movable label; a \`sha256:\` digest names one specific image forever. When Serving creates a Revision it asks the registry what the tag points to *right now* and records that digest. From then on the Revision's pods always pull the digest, never the tag.
+
+Walk through what happens if someone pushes a new \`:latest\` tomorrow:
+
+| | runs |
+|---|---|
+| revision 00001 | still \`sha256:a97656c5…\` — today's bytes |
+| revision 00002 | still \`sha256:a97656c5…\` — today's bytes |
+| the *next* revision you create (any template change) | the new digest \`:latest\` points to then |
+
+So nothing already deployed changes under your feet: a pod that restarts at 3 a.m. comes back with the same code it had before. That is what "a Revision is an immutable snapshot of code *and* configuration" means in practice — and it is why rolling back in lab 03 is only a traffic change: the old revision still names its old digest, so there is nothing to rebuild or re-resolve.`,
+    },
+    {
+      type: 'callout',
+      variant: 'warning',
+      title: 'The flip side',
+      md: `Pushing a new \`:latest\` does **not** update a running service. To pick up new code under the same tag you must create a new revision — any template change does it (\`kn service update\` adds an update-timestamp annotation, so even re-running it with the same image works). Teams that deploy by pushing \`:latest\` and waiting are waiting for something that never happens.`,
     },
     {
       type: 'callout',

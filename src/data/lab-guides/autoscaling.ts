@@ -96,6 +96,23 @@ wrote results.env`,
     },
     {
       type: 'prose',
+      md: `The autoscaler logs each time it enters and leaves panic mode. Its logs are JSON lines in the \`knative-serving\` namespace; \`jq\` trims them to time, source line, message and revision (timestamps are UTC):`,
+    },
+    {
+      type: 'code',
+      lang: 'bash',
+      code: `kubectl logs -n knative-serving deploy/autoscaler --since=1h \\
+  | grep -i panicking | grep $PREFIX-sleepy \\
+  | jq -r '[.timestamp[11:19], .caller, .message, ."knative.dev/key"] | @tsv'
+# 09:55:04  scaling/autoscaler.go:224  PANICKING.     default/alice-sleepy-00001
+# 09:56:04  scaling/autoscaler.go:232  Un-panicking.  default/alice-sleepy-00001`,
+    },
+    {
+      type: 'prose',
+      md: `No \`jq\`? Drop the last line and read the raw JSON. Panic ended about a minute after it began, even though the load ran for only 30 s: once panicking, the autoscaler stays in panic for at least one stable window.`,
+    },
+    {
+      type: 'prose',
       md: `## 4. Account for the 89 seconds
 
 After the load stopped, the revision took **89 s** to reach zero pods. It is not a timeout; it is two windows added together:

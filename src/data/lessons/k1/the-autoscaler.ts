@@ -65,10 +65,13 @@ reached zero 89s after the last request.`,
     },
     {
       type: 'code',
-      filename: 'the autoscaler said so itself (kubectl logs -n knative-serving deploy/autoscaler | grep -i panic)',
-      lang: 'text',
-      code: `11:35:41  scaling/autoscaler.go:224  "PANICKING."     default/alice-sleepy-00001
-11:36:45  scaling/autoscaler.go:232  "Un-panicking."  default/alice-sleepy-00001`,
+      filename: 'the autoscaler said so itself (its logs are JSON; jq trims them to four columns, times in UTC)',
+      lang: 'bash',
+      code: `kubectl logs -n knative-serving deploy/autoscaler --since=1h \\
+  | grep -i panicking \\
+  | jq -r '[.timestamp[11:19], .caller, .message, ."knative.dev/key"] | @tsv'
+# 11:35:41  scaling/autoscaler.go:224  PANICKING.     default/alice-sleepy-00001
+# 11:36:45  scaling/autoscaler.go:232  Un-panicking.  default/alice-sleepy-00001`,
     },
     {
       type: 'prose',

@@ -71,8 +71,9 @@ You can see the mode, and the endpoints that follow from it, directly:`,
 # NAME                MODE    ACTIVATORS   SERVICENAME         PRIVATESERVICENAME
 # alice-hello-00002   Proxy   4            alice-hello-00002   alice-hello-00002-private
 
-kubectl get endpoints alice-hello-00002
-# alice-hello-00002   10.244.0.5:8012,10.244.0.5:8112      ← the activator's IP
+kubectl get endpointslices -l kubernetes.io/service-name=alice-hello-00002
+# NAME                      ADDRESSTYPE   PORTS       ENDPOINTS
+# alice-hello-00002-fbslk   IPv4          8112,8012   10.244.0.5      ← the activator's IP
 
 kubectl get pods -n knative-serving -l app=activator -o wide
 # activator-56d698c974-h9zxs   …   10.244.0.5`,
@@ -85,7 +86,7 @@ kubectl get pods -n knative-serving -l app=activator -o wide
 - While that is **negative**, the activator stays in the path (Proxy), so it can absorb a burst and queue requests rather than let pods overflow.
 - Once it is positive, the SKS flips to Serve and the activator steps out.
 
-The default TBC is **211**. A pod with the default target of 100 and the 70% utilisation factor has capacity 70 — so a single-pod revision is 141 short, and stays in Proxy. The activator leaves the path only once you are running enough pods to absorb a 211-request burst on top of current load.`,
+The default TBC is **211**. Each pod counts at its full concurrency target of 100 — the 70% utilisation factor decides how many pods to scale to, not this sum. So an idle single-pod revision is 100 − 211 = 111 short, and stays in Proxy. The activator leaves the path only once you are running enough pods to absorb a 211-request burst on top of current load: three idle pods (300 − 211 = 89) would do it.`,
     },
     {
       type: 'code',
@@ -95,8 +96,8 @@ The default TBC is **211**. A pod with the default target of 100 and the 70% uti
 # … send a few requests …
 kubectl get sks | grep alice-hello
 # alice-hello-00003   Serve   2   alice-hello-00003   alice-hello-00003-private   True
-kubectl get endpoints alice-hello-00003
-# alice-hello-00003   10.244.0.54:8012,…                    ← now the pod's own IP`,
+kubectl get endpointslices -l kubernetes.io/service-name=alice-hello-00003
+# alice-hello-00003-x7k2p   IPv4   8112,8012   10.244.0.54      ← now the pod's own IP`,
     },
     {
       type: 'vendor',
@@ -107,7 +108,7 @@ kubectl get endpoints alice-hello-00003
         'https://knative.dev/docs/serving/request-flow/',
         'https://knative.dev/docs/serving/autoscaling/kpa-specific/',
       ],
-      md: `Knative v1.23 \`config-autoscaler\` defaults: \`target-burst-capacity: 211\`, \`activator-capacity: 100\`. Per revision, override with the annotation \`autoscaling.knative.dev/target-burst-capacity\`: **0** means the activator is only in the path at zero, **-1** means always. The mode flip from Proxy to Serve on setting 0 was observed on the reference cluster. The docs' request-flow page describes the same two paths and why the activator stays in by default for small revisions: it load-balances with knowledge of how many requests each pod can still take, which kube-proxy's round-robin cannot.`,
+      md: `Knative v1.23 \`config-autoscaler\` defaults: \`target-burst-capacity: 211\`, \`activator-capacity: 100\`. The autoscaler's excess burst capacity is \`floor(readyPods × total − TBC − panicConcurrency)\`, where \`total\` is the concurrency target (or \`containerConcurrency\`) before the utilisation factor is applied. Per revision, override with the annotation \`autoscaling.knative.dev/target-burst-capacity\`: **0** means the activator is only in the path at zero, **-1** means always. The mode flip from Proxy to Serve on setting 0 was observed on the reference cluster. The docs' request-flow page describes the same two paths and why the activator stays in by default for small revisions: it load-balances with knowledge of how many requests each pod can still take, which kube-proxy's round-robin cannot.`,
     },
     {
       type: 'prose',

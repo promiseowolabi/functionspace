@@ -215,7 +215,8 @@ So nothing already deployed changes under your feet: a pod that restarts at 3 a.
     {
       type: 'deepdive',
       title: 'Troubleshooting',
-      md: `- **\`responds\` fails but the Service is Ready** — the body must be exactly \`Hello <prefix>!\`. Did you update TARGET to the same value as \`$PREFIX\`? \`kn service describe $PREFIX-hello\` shows the current env.
+      md: `- **\`kn service create\` prints "Warning: Kubernetes default value is insecure…"** — expected, and the Service is still created. Knative is pointing out that the container sets no \`securityContext\` (privilege escalation, capabilities, \`runAsNonRoot\`, seccomp), so Kubernetes' permissive defaults apply. The lab cluster leaves \`secure-pod-defaults\` disabled in \`config-features\`, so Knative warns rather than filling them in. Don't reach for \`--security-context strict\` here: it sets \`runAsNonRoot\`, and the lab images run as root, so the pod never starts (\`CreateContainerConfigError\`).
+- **\`responds\` fails but the Service is Ready** — the body must be exactly \`Hello <prefix>!\`. Did you update TARGET to the same value as \`$PREFIX\`? \`kn service describe $PREFIX-hello\` shows the current env.
 - **The first \`curl\` after a pause takes about a second** — the revision had scaled to zero and you just watched a cold start. Lab 02 measures it.
 - **\`two-revisions\` fails** — an update that changes nothing in the template (same env value twice) does not create a revision. Change the value.`,
     },

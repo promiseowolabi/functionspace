@@ -98,15 +98,15 @@ pack's size is not waste: the Paketo stack carries a full OS userland and the bu
       type: 'quiz',
       questions: [
         {
-          q: 'Functions on a cluster that autoscales nodes have 10–12 s cold starts on fresh nodes. The images come from the pack builder. Which change most directly attacks the dominant term?',
+          q: 'Functions built with pack cold-start in about 1.5 s on nodes that have run the image before and 10–12 s on nodes the cluster autoscaler has just added (already Ready, never seen the image). Which change most directly attacks the difference?',
           options: [
-            'Raise containerConcurrency',
-            'Produce smaller images (a slimmer builder or base) so the first-pod-on-node pull is shorter — and measure the result',
-            'Switch the autoscaler to HPA',
-            'Set timeoutSeconds to 600',
+            'Move heavy imports out of init()',
+            'Build smaller images — the host builder or a slimmer base — and re-measure the new-node cold start',
+            'Set min-scale to 1 on the Service',
+            'Raise containerConcurrency so fewer pods are created',
           ],
           correct: [1],
-          explanation: 'On fresh nodes the pull term dominates, and it is proportional to image size. The measured gap between builders here was an order of magnitude. Concurrency and timeouts do not touch it; HPA cannot even scale to zero.',
+          explanation: 'The 9–10 s gap exists only on new nodes, so it is the pull, and pull time scales with image size (pack about 1.06 GB vs host about 50 MB here). Init runs the same on every node; min-scale keeps one warm pod, but every new node still pulls; fewer pods per node does not change what each new node downloads.',
         },
         {
           q: 'A function works when built with host but fails with SyntaxError at startup when CI builds it with s2i. What is the most likely cause?',

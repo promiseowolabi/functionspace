@@ -3,3 +3,5 @@ results.env
 de.env
 .venv/
 __pycache__/
+knative-functions/promise-fn/
+knative-functions/alice-fn/

@@ -55,6 +55,12 @@ kind version && kn version && kn quickstart version`,
 Use the same prefix you saved on the Labs page. Nothing in this lab is named after it, but \`verify.sh\` needs it to compute your completion code.`,
     },
     {
+      type: 'callout',
+      variant: 'warning',
+      title: 'zsh users: turn on comments first',
+      md: `Commands in these labs carry \`# …\` comments, and lines starting with \`#\` show expected output. bash ignores them at the prompt; zsh (the macOS default) does not — it passes \`#\` and every word after it as arguments, or writes them into a file. Run \`setopt interactive_comments\` once per shell, or add it to \`~/.zshrc\`.`,
+    },
+    {
       type: 'code',
       lang: 'bash',
       code: `export PREFIX=alice              # your handle

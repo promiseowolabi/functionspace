@@ -82,13 +82,13 @@ cp solution/test_func.py $PREFIX-fn/tests/test_func.py`,
     },
     {
       type: 'prose',
-      md: `The test calls \`handle\` directly with a fake \`send\` — no server, no cluster. Run it before you build anything. Use \`uv\`, not \`python3 -m venv\`: the OS Python may be too old for the scaffold (macOS ships 3.9, whose pip cannot install a \`pyproject.toml\`-only project in editable mode), and \`uv venv\` picks or downloads an interpreter that satisfies the project's \`requires-python\`:`,
+      md: `The test calls \`handle\` directly with a fake \`send\` — no server, no cluster. Run it before you build anything. Use \`uv\`, not \`python3 -m venv\`: the OS Python may be too old for the scaffold (macOS ships 3.9, whose pip cannot install a \`pyproject.toml\`-only project in editable mode), and \`uv venv\` picks or downloads an interpreter that satisfies the project's \`requires-python\`. Exclude the virtualenv from the build before you create it (see the warning below):`,
     },
     {
       type: 'code',
       lang: 'bash',
       code: `cd $PREFIX-fn
-echo .venv >> .funcignore          # before creating it — see below
+echo .venv >> .funcignore
 uv venv && . .venv/bin/activate
 uv pip install -q -e . && python -m pytest -q
 deactivate`,
@@ -103,12 +103,20 @@ deactivate`,
       type: 'prose',
       md: `## 3. Build and deploy
 
-\`func deploy\` builds an image, pushes it to a registry, and creates or updates a Knative Service. You choose the **builder**. The default, \`pack\`, uses Cloud Native Buildpacks; \`host\` builds on your machine without a builder image and is much faster for a lab:`,
+\`func deploy\` builds an image, pushes it to a registry, and creates or updates a Knative Service. You choose the **builder**. The default, \`pack\`, uses Cloud Native Buildpacks; \`host\` builds on your machine without a builder image and is much faster for a lab. It builds with whichever \`python3\` is first on your \`PATH\`, so deploy from inside the project's virtualenv:`,
     },
     {
       type: 'code',
       lang: 'bash',
-      code: `func deploy --builder host --registry localhost:5001 --env PREFIX=$PREFIX`,
+      code: `. .venv/bin/activate
+func deploy --builder host --registry localhost:5001 --env PREFIX=$PREFIX
+deactivate`,
+    },
+    {
+      type: 'callout',
+      variant: 'segfault',
+      title: "ERROR: Package 'service' requires a different Python: 3.9.6 not in '>=3.10'",
+      md: `Run \`func deploy --builder host\` outside the virtualenv on macOS and \`python3\` is \`/usr/bin/python3\`, which is 3.9. The host builder creates its build venv in \`.func/build/.venv\` from that interpreter, and the scaffold's \`requires-python\` rejects it — found while writing this lab. Inside the activated venv, \`python3\` is the one \`uv\` chose.`,
     },
     {
       type: 'code',

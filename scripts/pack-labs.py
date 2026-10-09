@@ -10,12 +10,14 @@ distribution. Each zip unpacks to:
 
 so `./verify.sh` finds `../common/lib.sh` wherever the reader unzips it, and
 several labs unzipped into the same place share one `common/` and one
-`de.env`. Build artefacts, virtualenvs and local results never ship.
+`de.env`. Build artefacts, virtualenvs, local results and anything git
+ignores (a reader's own `func create` project, say) never ship.
 
     python3 scripts/pack-labs.py
 """
 import os
 import re
+import subprocess
 import sys
 import zipfile
 
@@ -33,24 +35,43 @@ def lab_ids() -> list[str]:
     return re.findall(r"^\s+id: '([a-z0-9-]+)',\s*$", registry, flags=re.M)
 
 
+def git_ignored(paths: list[str]) -> set[str]:
+    """The subset of paths git ignores; empty outside a git checkout."""
+    if not paths:
+        return set()
+    try:
+        out = subprocess.run(
+            ["git", "-C", ROOT, "check-ignore", "--stdin", "-z"],
+            input="\0".join(paths) + "\0", capture_output=True, text=True,
+        )
+    except FileNotFoundError:
+        return set()
+    if out.returncode not in (0, 1):  # 1 = nothing ignored
+        return set()
+    return set(filter(None, out.stdout.split("\0")))
+
+
 def add_tree(z: zipfile.ZipFile, src: str, arc: str) -> int:
-    n = 0
+    files = []
     for dirpath, dirnames, filenames in os.walk(src):
         dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
         for name in sorted(filenames):
-            if SKIP_FILES.search(name):
-                continue
             full = os.path.join(dirpath, name)
-            if os.path.islink(full):
-                continue
-            rel = os.path.relpath(full, src)
-            info = zipfile.ZipInfo(f"{arc}/{rel}", date_time=(2026, 1, 1, 0, 0, 0))
-            mode = 0o755 if os.access(full, os.X_OK) else 0o644
-            info.external_attr = (0o100000 | mode) << 16
-            info.compress_type = zipfile.ZIP_DEFLATED
-            with open(full, "rb") as fh:
-                z.writestr(info, fh.read())
-            n += 1
+            if not SKIP_FILES.search(name) and not os.path.islink(full):
+                files.append(full)
+    ignored = git_ignored(files)
+    n = 0
+    for full in files:
+        if full in ignored:
+            continue
+        rel = os.path.relpath(full, src)
+        info = zipfile.ZipInfo(f"{arc}/{rel}", date_time=(2026, 1, 1, 0, 0, 0))
+        mode = 0o755 if os.access(full, os.X_OK) else 0o644
+        info.external_attr = (0o100000 | mode) << 16
+        info.compress_type = zipfile.ZIP_DEFLATED
+        with open(full, "rb") as fh:
+            z.writestr(info, fh.read())
+        n += 1
     return n
 
 

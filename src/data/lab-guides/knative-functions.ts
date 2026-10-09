@@ -2,7 +2,7 @@ import type { LabGuide } from './types'
 
 const guide: LabGuide = {
   id: 'knative-functions',
-  requires: ['the kind cluster and localhost:5001 registry from lab 00', 'func ≥ 1.23', 'kubectl', 'curl', 'Python 3.10+ (for the local test)'],
+  requires: ['the kind cluster and localhost:5001 registry from lab 00', 'func ≥ 1.23', 'kubectl', 'curl', 'uv (for the local test — it fetches a matching Python)'],
   blocks: [
     {
       type: 'prose',
@@ -82,22 +82,22 @@ cp solution/test_func.py $PREFIX-fn/tests/test_func.py`,
     },
     {
       type: 'prose',
-      md: `The test calls \`handle\` directly with a fake \`send\` — no server, no cluster. Run it before you build anything:`,
+      md: `The test calls \`handle\` directly with a fake \`send\` — no server, no cluster. Run it before you build anything. Use \`uv\`, not \`python3 -m venv\`: the OS Python may be too old for the scaffold (macOS ships 3.9, whose pip cannot install a \`pyproject.toml\`-only project in editable mode), and \`uv venv\` picks or downloads an interpreter that satisfies the project's \`requires-python\`:`,
     },
     {
       type: 'code',
       lang: 'bash',
       code: `cd $PREFIX-fn
 echo .venv >> .funcignore          # before creating it — see below
-python3 -m venv .venv && . .venv/bin/activate
-pip install -q -e . && python -m pytest -q
+uv venv && . .venv/bin/activate
+uv pip install -q -e . && python -m pytest -q
 deactivate`,
     },
     {
       type: 'callout',
       variant: 'segfault',
       title: 'Error: project may not contain absolute links',
-      md: `A virtualenv is full of absolute symlinks to your system Python. If it sits inside the project and is not excluded, \`func deploy\` refuses to build with exactly this error — found while writing this lab. Listing \`.venv\` in \`.funcignore\` keeps it out of the build context (and out of the rebuild fingerprint).`,
+      md: `A virtualenv is full of absolute symlinks to the Python it was created from. If it sits inside the project and is not excluded, \`func deploy\` refuses to build with exactly this error — found while writing this lab. Listing \`.venv\` in \`.funcignore\` keeps it out of the build context (and out of the rebuild fingerprint).`,
     },
     {
       type: 'prose',

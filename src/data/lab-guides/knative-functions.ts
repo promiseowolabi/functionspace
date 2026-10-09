@@ -90,8 +90,7 @@ cp solution/test_func.py $PREFIX-fn/tests/test_func.py`,
       code: `cd $PREFIX-fn
 echo .venv >> .funcignore
 uv venv && . .venv/bin/activate
-uv pip install -q -e . && python -m pytest -q
-deactivate`,
+uv pip install -q -e . && python -m pytest -q`,
     },
     {
       type: 'callout',
@@ -103,14 +102,12 @@ deactivate`,
       type: 'prose',
       md: `## 3. Build and deploy
 
-\`func deploy\` builds an image, pushes it to a registry, and creates or updates a Knative Service. You choose the **builder**. The default, \`pack\`, uses Cloud Native Buildpacks; \`host\` builds on your machine without a builder image and is much faster for a lab. It builds with whichever \`python3\` is first on your \`PATH\`, so deploy from inside the project's virtualenv:`,
+\`func deploy\` builds an image, pushes it to a registry, and creates or updates a Knative Service. You choose the **builder**. The default, \`pack\`, uses Cloud Native Buildpacks; \`host\` builds on your machine without a builder image and is much faster for a lab. It builds with whichever \`python3\` is first on your \`PATH\`, so leave the virtualenv from step 2 active (in a new terminal, \`. .venv/bin/activate\` first):`,
     },
     {
       type: 'code',
       lang: 'bash',
-      code: `. .venv/bin/activate
-func deploy --builder host --registry localhost:5001 --env PREFIX=$PREFIX
-deactivate`,
+      code: `func deploy --builder host --registry localhost:5001 --env PREFIX=$PREFIX`,
     },
     {
       type: 'callout',
@@ -234,7 +231,8 @@ deploy:
     {
       type: 'code',
       lang: 'bash',
-      code: `cd ..         # back to the lab folder
+      code: `deactivate
+cd ..
 ./verify.sh`,
     },
     {

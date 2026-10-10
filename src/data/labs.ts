@@ -172,6 +172,8 @@ export const LABS: HandsOnLab[] = [
       { id: 'login', label: 'a tenant-scoped list call succeeds' },
       { id: 'compute', label: 'the compute cluster named in de.env is linked to the tenant' },
       { id: 'registry', label: 'the container registry named in de.env is linked to the tenant' },
+      { id: 'registry-tls', label: "Docker can trust the registry's TLS certificate" },
+      { id: 'docker', label: 'the Docker daemon vastde will use accepts its API and image store' },
     ],
   },
   {

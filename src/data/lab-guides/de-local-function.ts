@@ -2,7 +2,7 @@ import type { LabGuide } from './types'
 
 const guide: LabGuide = {
   id: 'de-local-function',
-  requires: ['../de.env from lab 06', 'vastde v5.5', 'Docker (daemon running)', '~5 GB free disk for the build'],
+  requires: ['../de.env from lab 06', 'vastde v5.5', 'Docker that passes lab 06\'s ./vastde-docker.sh status', '~5 GB free disk for the build'],
   blocks: [
     {
       type: 'prose',
@@ -72,7 +72,7 @@ def handler(ctx, event):
       type: 'prose',
       md: `## 3. Build
 
-The builder runs in Docker from the image named in your CLI config. It downloads a lot the first time and writes several gigabytes of scratch data to your temp directory — point that somewhere with room:`,
+The builder runs in Docker from the image named in your CLI config — in the Docker 28 daemon from lab 06 if your \`de.env\` sets \`DOCKER_HOST\`, which is why every lab starts with \`. ../de.env\`. It downloads a lot the first time and writes several gigabytes of scratch data to your temp directory — point that somewhere with room:`,
     },
     {
       type: 'code',
@@ -197,7 +197,10 @@ docker logs $(docker ps -q --filter ancestor=$PREFIX-echo:latest) 2>&1 | grep 'e
       md: `- **\`image\` fails** — the build did not finish; re-run it with \`--save-build-log\` and read the log. Name the image exactly \`$PREFIX-echo\`.
 - **\`localrun\` fails** — no container on 8080. \`docker ps\`; a previous \`localrun\` may hold the port — \`docker rm -f\` it.
 - **\`invoke\` fails with 500** — you edited \`cloudevent.yaml\`; see the callout above, or \`docker logs\` for the \`malformed vast event\` line.
-- **Builder image pull fails** — the builder image is in your CLI config (\`vastde config view\`); it must match your CLI version.`,
+- **Builder image pull fails** — the builder image is in your CLI config (\`vastde config view\`); it must match your CLI version.
+- **\`client version 1.38 is too old. Minimum supported API version is 1.40\`** (or 1.44) — your Docker is Engine 29+ and this shell is not using the Docker 28 daemon. \`. ../de.env\` in this shell; if it still fails, redo lab 06 step 7.
+- **\`failed to export: saving image: failed to fetch base layers: open /tmp/imgutil.local.image…: no such file or directory\`**, ending in \`executing lifecycle: failed with status code: 62\` — the daemon accepted the API but stores images in the containerd store, which the builder cannot save into. Same fix: lab 06 step 7.
+- **\`docker images\` does not list \`$PREFIX-echo\`** — you are asking your usual Docker; the image is in the Docker 28 daemon. \`. ../de.env\` first.`,
     },
   ],
   cleanup: [

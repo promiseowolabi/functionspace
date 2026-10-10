@@ -84,7 +84,7 @@ The infrastructure objects from D1.L2 are linked to the tenant by an administrat
       lang: 'bash',
       code: `vastde compute-clusters list          # → K8S_CLUSTER
 vastde container-registries list      # → REGISTRY
-vastde container-registries get <REGISTRY> -o json    # → REGISTRY_URL (where docker push goes)
+vastde container-registries get <REGISTRY> -o json    # → REGISTRY_URL: its url, without https://
 vastde buckets list                   # → a BUCKET you are allowed to write to
 vastde triggers list                  # existing triggers: note their topic and broker
 vastde triggers get <an existing trigger> -o json      # → BROKER and TOPIC from its "topic" VRN`,
@@ -137,8 +137,119 @@ BUILDER_IMAGE=vastdataorg/vast-builder:v5.5.0-sp2`,
       md: `It contains hostnames and resource names from your cluster. Keep it out of version control and out of screenshots you share.`,
     },
     {
+      type: 'callout',
+      variant: 'segfault',
+      title: 'REGISTRY_URL is host:port, not a URL',
+      md: `\`container-registries get\` reports the registry as \`https://<host>:5000\`. Write only \`<host>:5000\` in \`de.env\`: labs 08 and 10 build image names from it (\`$REGISTRY_URL/$PREFIX/echo:latest\`), and \`docker tag\` rejects a name with a scheme — \`invalid reference format\`. Found while testing this course.`,
+    },
+    {
       type: 'prose',
-      md: `## 6. Verify`,
+      md: `## 6. Trust the registry's certificate
+
+Labs 08 and 10 \`docker push\` to the tenant registry over HTTPS. Lab registries often use a **self-signed** certificate, and Docker refuses those with \`x509: certificate signed by unknown authority\` until you install the certificate where Docker looks. First, does it already verify?`,
+    },
+    {
+      type: 'code',
+      lang: 'bash',
+      code: `. ../de.env
+curl -s -o /dev/null -w '%{http_code}\\n' https://$REGISTRY_URL/v2/`,
+    },
+    {
+      type: 'prose',
+      md: `\`200\` or \`401\` — the certificate verifies; skip to step 7. \`000\` — it does not. Fetch the certificate the registry presents and look at it:`,
+    },
+    {
+      type: 'code',
+      lang: 'bash',
+      code: `echo | openssl s_client -connect $REGISTRY_URL 2>/dev/null | openssl x509 > registry-ca.crt
+openssl x509 -in registry-ca.crt -noout -subject -issuer -fingerprint -sha256`,
+    },
+    {
+      type: 'prose',
+      md: `If **subject and issuer are the same**, it is self-signed and this file is its own CA. Read the fingerprint to your administrator before you trust it — this is trust on first use, and the check is what makes it safe. If the issuer is a different name (a company CA), ask your administrator for that CA's certificate and use it as \`registry-ca.crt\` instead.
+
+Install it under the registry's \`host:port\` — the directory name must match \`REGISTRY_URL\` exactly. **macOS (Docker Desktop and OrbStack):**`,
+    },
+    {
+      type: 'code',
+      lang: 'bash',
+      code: `mkdir -p ~/.docker/certs.d/$REGISTRY_URL
+cp registry-ca.crt ~/.docker/certs.d/$REGISTRY_URL/ca.crt`,
+    },
+    {
+      type: 'prose',
+      md: `**Linux:**`,
+    },
+    {
+      type: 'code',
+      lang: 'bash',
+      code: `sudo mkdir -p /etc/docker/certs.d/$REGISTRY_URL
+sudo cp registry-ca.crt /etc/docker/certs.d/$REGISTRY_URL/ca.crt`,
+    },
+    {
+      type: 'prose',
+      md: `Docker reads these per registry, at push time — no restart. Re-run the \`curl\` above with \`--cacert registry-ca.crt\` to see \`200\` or \`401\`. The Docker 28 daemon in the next step mounts the same folder, so it trusts the registry too.`,
+    },
+    {
+      type: 'prose',
+      md: `## 7. Check Docker
+
+Labs 07–10 build and run your function with Docker through \`vastde\`. \`vastde\` v5.5 speaks an old Docker API (1.38), and its builder cannot save images into Docker's containerd image store. **Docker Engine 29** — current Docker Desktop, OrbStack and Linux packages — rejects that API by default and uses the containerd store on new installs, so the build fails. Check the daemon you have:`,
+    },
+    {
+      type: 'code',
+      lang: 'bash',
+      code: `./vastde-docker.sh status`,
+    },
+    {
+      type: 'code',
+      filename: 'output on Docker 29 (OrbStack, reference machine)',
+      lang: 'text',
+      code: `Docker daemon vastde will use: your default
+  ✗ minimum API version is 1.40; vastde needs 1.38
+  ✗ images are in the containerd store; the vastde build cannot save into it
+not usable by vastde — run: ./vastde-docker.sh start`,
+    },
+    {
+      type: 'prose',
+      md: `If it says **ready for vastde**, skip to step 8. Otherwise, do not reconfigure your Docker: start a **Docker 28 daemon in a container** just for \`vastde\`, and point only the DataEngine labs at it.`,
+    },
+    {
+      type: 'code',
+      lang: 'bash',
+      code: `./vastde-docker.sh start
+echo 'export DOCKER_HOST=tcp://127.0.0.1:23750' >> ../de.env
+(. ../de.env && ./vastde-docker.sh status)`,
+    },
+    {
+      type: 'prose',
+      md: `The same steps work on Docker Desktop, OrbStack and Linux. The script runs \`docker:28-dind\` on your own Docker, publishes the daemon on \`127.0.0.1:23750\` and \`localrun\`'s port \`8080\`, and mounts your registry CA certificates (\`~/.docker/certs.d\`, or \`/etc/docker/certs.d\` on Linux) read-only so \`docker push\` trusts the tenant registry. Because \`DOCKER_HOST\` lives in \`de.env\`, only a shell that ran \`. ../de.env\` — and the lab scripts, which source it — use the Docker 28 daemon. Your other terminals, and the kind cluster from the Knative labs, keep using your normal Docker. Registry logins live in \`~/.docker/config.json\` on the client side, so \`docker login\` works either way.`,
+    },
+    {
+      type: 'callout',
+      variant: 'warning',
+      title: 'Your images are in a different daemon',
+      md: `With \`DOCKER_HOST\` set, \`docker images\` lists the Docker 28 daemon's images, not your usual ones. That is the point — but it is why \`$PREFIX-echo\` will not show up in a terminal that has not sourced \`de.env\`.`,
+    },
+    {
+      type: 'deepdive',
+      title: 'The alternative: reconfigure your own Docker',
+      md: `You can instead change your main daemon. It needs both fixes, and the second one hides everything you created under the containerd store — **including a kind cluster from lab 00** — until you switch it back, because Docker keeps each image store's images and containers apart.
+
+**1. Accept API 1.38** — add \`"min-api-version": "1.24"\` to the daemon's JSON config, merged into what is already there (appending a second object with \`tee -a\` leaves invalid JSON and Docker will not start):
+- **Linux:** \`/etc/docker/daemon.json\`, then \`sudo systemctl restart docker\`.
+- **Docker Desktop:** Settings → Docker Engine, edit the JSON, **Apply & restart**.
+- **OrbStack:** Settings → Docker (or \`~/.orbstack/config/docker.json\`), then \`orb restart docker\`.
+
+**2. Use the classic image store:**
+- **Docker Desktop:** Settings → General → untick **Use containerd for pulling and storing images**, Apply & restart.
+- **Linux and OrbStack:** add \`"features": {"containerd-snapshotter": false}\` to the same JSON and restart.
+
+Check with \`docker version --format '{{.Server.MinAPIVersion}}'\` (1.38 or lower) and \`docker info --format '{{.Driver}}'\` (\`overlay2\`, not \`overlayfs\`). Undo both edits to get your containerd images and kind cluster back.`,
+    },
+    {
+      type: 'prose',
+      md: `## 8. Verify`,
     },
     {
       type: 'code',
@@ -151,13 +262,22 @@ BUILDER_IMAGE=vastdataorg/vast-builder:v5.5.0-sp2`,
       md: `- **\`login\` fails** — \`vastde config view\`: wrong tenant or VMS URL, or credentials in the wrong file. \`-v 5\` shows the HTTP status of the token request.
 - **\`de-env\` fails** — a value is empty or still a placeholder (\`my-…\`, \`…example.internal\`).
 - **\`compute\` or \`registry\` fails** — the name in \`de.env\` does not match \`compute-clusters list\` / \`container-registries list\` exactly, or nothing is linked to your tenant yet; that is an administrator task.
-- **TLS errors** — lab VMS certificates are often self-signed; \`vastde\` accepts them, other tools may not.`,
+- **TLS errors** — lab VMS certificates are often self-signed; \`vastde\` accepts them, other tools may not.
+- **\`docker\` fails** — run \`(. ../de.env && ./vastde-docker.sh status)\`. Either \`DOCKER_HOST\` is missing from \`de.env\`, or the Docker 28 daemon is not running (\`./vastde-docker.sh start\`; it restarts with Docker, but not after \`stop\`).
+- **\`de-env\` fails with every value filled in** — \`REGISTRY_URL\` still starts with \`https://\`.
+- **\`registry-tls\` fails** — step 6: no \`ca.crt\` under \`certs.d/<REGISTRY_URL>/\`, the directory name does not match \`REGISTRY_URL\` exactly, or the file is the wrong certificate (compare fingerprints).`,
     },
   ],
   cleanup: [
     {
       type: 'prose',
-      md: `Nothing was created on the cluster. Keep \`vastde\` configured and \`../de.env\` in place for labs 07–10.`,
+      md: `Nothing was created on the cluster. Keep \`vastde\` configured, \`../de.env\` in place and, if you started it, the Docker 28 daemon running for labs 07–10. When you have finished them, remove it and the images it holds:`,
+    },
+    {
+      type: 'code',
+      lang: 'bash',
+      code: `./vastde-docker.sh stop
+docker volume rm vastde-docker`,
     },
   ],
 }

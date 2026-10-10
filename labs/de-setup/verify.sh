@@ -7,7 +7,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 cd "$HERE" || exit 2
 load_de_env
 require_prefix
-require_cmd vastde
+require_cmd vastde docker curl
 
 echo "lab 06 · de-setup · prefix=$PREFIX"
 
@@ -21,6 +21,7 @@ de_env_ok() {
     [ -n "$val" ] || return 1
     case "$val" in *example.internal*|my-*) return 1 ;; esac
   done
+  case "$REGISTRY_URL" in *://*) return 1 ;; esac
 }
 check de-env "de.env defines every placeholder the DataEngine labs use" de_env_ok
 
@@ -31,5 +32,21 @@ check compute "the compute cluster named in de.env is linked to the tenant" \
 
 check registry "the container registry named in de.env is linked to the tenant" \
   de_json container-registries get "$REGISTRY"
+
+# registry_tls_ok — the registry's TLS certificate verifies, with the CA file
+# Docker would use for it if there is one. 401 counts: it means TLS worked
+# and the registry wants a login.
+registry_tls_ok() {
+  local ca="" f code
+  for f in "$HOME/.docker/certs.d/$REGISTRY_URL/ca.crt" "/etc/docker/certs.d/$REGISTRY_URL/ca.crt"; do
+    [ -f "$f" ] && { ca=$f; break; }
+  done
+  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 ${ca:+--cacert "$ca"} "https://$REGISTRY_URL/v2/")
+  [ "$code" = 200 ] || [ "$code" = 401 ]
+}
+check registry-tls "Docker can trust the registry's TLS certificate" registry_tls_ok
+
+check docker "the Docker daemon vastde will use accepts its API and image store" \
+  "$HERE/vastde-docker.sh" status
 
 finish de-setup

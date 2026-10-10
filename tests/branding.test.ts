@@ -12,14 +12,15 @@
  * PLAN.md §"The anonymisation rule" is the policy; this is the enforcement.
  */
 
+import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { lstatSync, readFileSync, readdirSync } from 'node:fs'
 import { extname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const ROOT = new URL('..', import.meta.url).pathname
 
-const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'target', '_solutions', '.venv'])
+const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'target', '_solutions', '.venv', '.func'])
 const TEXT_EXT = new Set([
   '.ts',
   '.tsx',
@@ -45,7 +46,8 @@ function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
     if (SKIP_DIRS.has(name)) continue
     const full = join(dir, name)
-    if (statSync(full).isDirectory()) walk(full, out)
+    // lstat: a func host build leaves .func/build/f -> ../.., a loop
+    if (lstatSync(full).isDirectory()) walk(full, out)
     else if (TEXT_EXT.has(extname(name))) out.push(full)
   }
   return out
@@ -82,7 +84,25 @@ const candidates = (text: string): Set<string> => {
   return out
 }
 
-const FILES = walk(ROOT)
+/* Files git ignores (a reader's filled-in de.env, a local func project) are
+   never committed or packed into a lab zip, so they cannot leak. */
+function notIgnored(files: string[]): string[] {
+  let out = ''
+  try {
+    out = execFileSync('git', ['-C', ROOT, 'check-ignore', '--stdin', '-z'], {
+      input: files.join('\0'),
+      encoding: 'utf8',
+    })
+  } catch (e) {
+    const err = e as { status?: number; stdout?: string }
+    if (err.status !== 1) throw e // 1 = nothing ignored
+    out = err.stdout ?? ''
+  }
+  const ignored = new Set(out.split('\0').filter(Boolean))
+  return files.filter((f) => !ignored.has(f))
+}
+
+const FILES = notIgnored(walk(ROOT))
 const rel = (f: string) => f.slice(ROOT.length)
 
 describe('de-branding', () => {

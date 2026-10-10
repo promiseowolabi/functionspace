@@ -265,7 +265,7 @@ Check with \`docker version --format '{{.Server.MinAPIVersion}}'\` (1.38 or lowe
 - **TLS errors** — lab VMS certificates are often self-signed; \`vastde\` accepts them, other tools may not.
 - **\`docker\` fails** — run \`(. ../de.env && ./vastde-docker.sh status)\`. Either \`DOCKER_HOST\` is missing from \`de.env\`, or the Docker 28 daemon is not running (\`./vastde-docker.sh start\`; it restarts with Docker, but not after \`stop\`).
 - **\`de-env\` fails with every value filled in** — \`REGISTRY_URL\` still starts with \`https://\`.
-- **\`registry-tls\` fails** — step 6: no \`ca.crt\` under \`certs.d/<REGISTRY_URL>/\`, the directory name does not match \`REGISTRY_URL\` exactly, or the file is the wrong certificate (compare fingerprints).`,
+- **\`registry\` fails although \`container-registries get <REGISTRY>\` works** — the TLS half, step 6: no \`ca.crt\` under \`certs.d/<REGISTRY_URL>/\`, the directory name does not match \`REGISTRY_URL\` exactly, or the file is the wrong certificate (compare fingerprints).`,
     },
   ],
   cleanup: [

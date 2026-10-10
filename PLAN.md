@@ -141,7 +141,7 @@ rather than documented (e.g. its use of Knative underneath), the lesson
 | 03 | `traffic-split` | kind | tagged revisions, 80/20 split | traffic block, tag URL |
 | 04 | `broker-trigger` | kind | PingSource → broker → filtered trigger → sink, DLS | resources Ready, events seen |
 | 05 | `knative-functions` | kind | `func create` → deploy → invoke (Python CloudEvents) | ksvc from func, invoke 2xx |
-| 06 | `de-setup` | VAST | `vastde` configured against a tenant | config, list calls succeed |
+| 06 | `de-setup` | VAST | `vastde` configured against a tenant | config, list calls succeed, registry trusted, Docker usable by vastde |
 | 07 | `de-local-function` | VAST | init → build → localrun → invoke | image exists, handler OK |
 | 08 | `de-schedule-pipeline` | VAST | push, function, schedule trigger, pipeline | pipeline Ready, logs |
 | 09 | `de-element-trigger` | VAST | S3 upload fires a function | trigger, pipeline, log line |
